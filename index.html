@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestionnaire de Tâches</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            margin: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #333333;
+            margin-bottom: 20px;
+        }
+        .task {
+            background-color: #ffffff;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 400px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .task:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .task-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .task-text {
+            flex: 1;
+            font-size: 18px;
+            color: #333333;
+            display: flex;
+            align-items: center;
+        }
+        .task-title {
+            margin-right: 10px;
+        }
+        .task-date {
+            padding: 8px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 150px;
+        }
+        .task-time {
+            font-size: 14px;
+            color: #888888;
+            margin-top: 5px;
+        }
+        .task-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .button {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #0b7dda;
+        }
+        .button-danger {
+            background-color: #f44336;
+        }
+        .input-container {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .input-container input[type=text],
+        .input-container input[type=date] {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 300px;
+            margin-right: 10px;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .input-container input[type=text]:focus,
+        .input-container input[type=date]:focus {
+            outline: none;
+            border-color: #2196F3;
+            box-shadow: 0 0 5px rgba(33, 150, 243, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <h1>Gestionnaire de Tâches</h1>
+    <div class="input-container">
+        <input type="text" id="taskInput" placeholder="Entrez une nouvelle tâche..." onkeydown="checkEnter(event)">
+        <input type="date" id="taskDate">
+        <button onclick="ajouterTache()" class="button">Ajouter</button>
+    </div>
+    <div id="tasksList"></div>
+    <div class="clear-all-container">
+        <button onclick="supprimerToutesTaches()" class="button button-danger">Supprimer Toutes les Tâches</button>
+    </div>
+
+    <script>
+        // Chargement des tâches depuis le localStorage lors du chargement de la page
+        document.addEventListener("DOMContentLoaded", function() {
+            var tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+            tasks.sort((a, b) => a.text.localeCompare(b.text));
+            tasks.forEach(function(task) {
+                ajouterTacheDOM(task.text, task.date);
+            });
+        });
+
+        // Fonction pour vérifier si la touche "Enter" a été pressée
+        function checkEnter(event) {
+            if (event.key === "Enter") {
+                ajouterTache();
+            }
+        }
+
+        // Fonction pour ajouter une nouvelle tâche principale
+        function ajouterTache() {
+            var nouvelleTache = document.getElementById("taskInput").value.trim();
+            var taskDate = document.getElementById("taskDate").value;
+            ajouterTacheDOM(nouvelleTache, taskDate); // On passe taskDate même si c'est vide
+            document.getElementById("taskInput").value = "";
+            document.getElementById("taskDate").value = ""; // Réinitialise le champ de date
+        }
+
+        // Fonction pour ajouter une tâche au DOM
+        function ajouterTacheDOM(taskText, taskDate) {
+            var taskList = document.getElementById("tasksList");
+            var newTaskDiv = document.createElement("div");
+            newTaskDiv.className = "task";
+
+            var taskMainDiv = document.createElement("div");
+            taskMainDiv.className = "task-main";
+            taskMainDiv.innerHTML = "<div class='task-text'>" +
+                                        "<span class='task-title'>" + taskText + "</span>" +
+                                        "<input type='date' class='task-date' value='" + (taskDate || "") + "' onchange='sauvegarderTachesEnLocalStorage()'>" +
+                                    "</div>" +
+                                    "<div class='task-buttons'>" +
+                                        "<button class='button button-danger' onclick='supprimerTache(this)'>Supprimer</button>" +
+                                        "<button class='button' onclick='modifierTache(this)'>Modifier</button>" +
+                                    "</div>";
+
+            var taskTimeDiv = document.createElement("div");
+            taskTimeDiv.className = "task-time";
+            taskTimeDiv.textContent = "Créé le : " + new Date().toLocaleString();
+
+            newTaskDiv.appendChild(taskMainDiv);
+            newTaskDiv.appendChild(taskTimeDiv);
+
+            taskList.appendChild(newTaskDiv);
+            trierTachesDOM();
+            sauvegarderTachesEnLocalStorage(); // Sauvegarde des tâches immédiatement après l'ajout
+        }
+
+        // Fonction pour sauvegarder les tâches dans le localStorage
+        function sauvegarderTachesEnLocalStorage() {
+            var tasks = [];
+            var taskElements = document.querySelectorAll(".task");
+            taskElements.forEach(function(taskElement) {
+                var taskText = taskElement.querySelector(".task-text .task-title").textContent.trim();
+                var taskDate = taskElement.querySelector(".task-text .task-date").value;
+                tasks.push({ text: taskText, date: taskDate });
+            });
+            tasks.sort((a, b) => a.text.localeCompare(b.text));
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+        }
+
+        // Fonction pour supprimer une tâche
+        function supprimerTache(button) {
+            var taskDiv = button.parentElement.parentElement.parentElement;
+            taskDiv.remove();
+            sauvegarderTachesEnLocalStorage();
+        }
+
+        // Fonction pour modifier une tâche
+        function modifierTache(button) {
+            var taskDiv = button.parentElement.parentElement.parentElement;
+            var taskTextElement = taskDiv.querySelector(".task-text .task-title");
+            var taskText = taskTextElement.textContent.trim(); // Récupère le texte de la tâche principale
+            var nouvelleTache = prompt("Modifier la tâche :", taskText);
+            if (nouvelleTache !== null && nouvelleTache.trim() !== "") {
+                taskTextElement.textContent = nouvelleTache;
+                sauvegarderTachesEnLocalStorage(); // Sauvegarde après modification
+            }
+        }
+
+        // Fonction pour trier les tâches dans l'interface utilisateur
+        function trierTachesDOM() {
+            var taskList = document.getElementById("tasksList");
+            var tasks = Array.from(taskList.getElementsByClassName("task"));
+            tasks.sort((a, b) => {
+                var textA = a.querySelector(".task-text .task-title").textContent.trim().toLowerCase();
+                var textB = b.querySelector(".task-text .task-title").textContent.trim().toLowerCase();
+                return textA.localeCompare(textB);
+            });
+            taskList.innerHTML = "";
+            tasks.forEach(task => taskList.appendChild(task));
+        }
+
+        // Fonction pour supprimer toutes les tâches
+        function supprimerToutesTaches() {
+            var taskList = document.getElementById("tasksList");
+            taskList.innerHTML = "";
+            localStorage.removeItem("tasks");
+        }
+    </script>
+</body>
+</html>
